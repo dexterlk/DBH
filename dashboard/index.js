@@ -123,7 +123,7 @@ module.exports = (client) => {
     clientID: client.user.id,
     clientSecret: client.config.dashboard.oauthSecret,
     callbackURL: client.config.dashboard.callbackURL,
-    scope: ["identify"]
+    scope: ["identify", "email"]
   },
   (accessToken, refreshToken, profile, done) => {
     process.nextTick(() => done(null, profile));
