@@ -19,34 +19,6 @@ const mongoose = require("mongoose");
 
 mongoose.connect(config.dbUrl, { useNewUrlParser: true });
 
-// const nB = new Bots({
-//   id: "560869129310175243",
-//   mainOwner: "414764511489294347",
-//   owners: [],
-//   library: "discord.js",
-//   upvotes: 0,
-//   totalVotes: 0,
-//   website: "https://bots.discordhouse.xyz",
-//   votes: [],
-//   github: null,
-//   shortDesc: "This is a short desc.",
-//   longDesc: "<p>Fk you lol</p>",
-//   server: "https://discord.gg/discordhouse",
-//   prefix: ">",
-//   verified: false,
-//   trusted: true,
-//   certified: false,
-//   vanityUrl: null,
-//   invite: null,
-//   featured: null,
-//   tags: ["Role Management"],
-//   token: "test",
-//   shardID: 0,
-//   serverCount: 0,
-//   shardCount: 0
-// });
-
-// nB.save();
 module.exports = (client) => {
   const dataDir = path.resolve(`${process.cwd()}${path.sep}dashboard`);
   const templateDir = path.resolve(`${dataDir}${path.sep}templates`);
@@ -129,11 +101,6 @@ module.exports = (client) => {
     process.nextTick(() => done(null, profile));
   }))
 
-  app.use((req, res, next) => {
-    client.channels.get("572380571074953217").send(`[WEBSITE]: New request is being served.`);
-    next();
-  });
-
   app.use(session({
     store: new MemoryStore({ checkPeriod: 86400000 }),
     secret: client.config.dashboard.sessionSecret,
@@ -160,7 +127,7 @@ module.exports = (client) => {
     res.redirect("/login");
   }
 
-  app.get("/discord", (req, res) => res.redirect("https://discord.gg/E2Ker3E"));
+  app.get("/discord", (req, res) => res.redirect(client.config.discordInvite));
 
   app.get("/login", (req, res, next) => {
     if (req.session.backURL) {
@@ -276,7 +243,6 @@ module.exports = (client) => {
   //
   app.post("/api/stats/bot/:id", async (req, res) => {
     res.setHeader("Content-Type", "application/json");
-    client.channels.get("572355379275759617").send(`[API]: Post stats request was made on <@${req.params.id}>'s behalf.`);
     if (typeof req.params.id !== "string") return res.status(400).send(JSON.stringify({ "msg": "Bad Request.", "code": 400 }, null, 4));
     if (!req.body) return res.status(400).send(JSON.stringify({ "msg": "Bad Request.", "code": 400, "error": "No body was found within the request.", "errorCode": "NO_STATS_POST_BODY" }, null, 4));
     if (!req.body.serverCount) return res.status(400).send(JSON.stringify({ "msg": "Bad Request.", "code": 400, "error": "No serverCount key was found within the request body.", "errorCode": "NO_STATS_POST_SERVERCOUNT" }, null, 4));
@@ -297,7 +263,6 @@ module.exports = (client) => {
 
   app.get("/api/upvotes/bot/:id", async (req, res) => {
     res.setHeader("Content-Type", "application/json");
-    client.channels.get("572355379275759617").send(`[API]: Upvotes request was made on <@${req.params.id}>'s behalf.`);
     Bots.findOne({ id: req.params.id }, async (err, entry) => {
       if (err) console.log(err);
       if (!entry) return res.status(404).send(JSON.stringify({ "msg": "Not Found.", "code": 404, "error": "No bot found.", "errorCode": "NOT_FOUND" }, null, 4));
@@ -336,7 +301,7 @@ module.exports = (client) => {
       .setColor("BLUE")
       .setTimestamp();
 
-    client.channels.get("569068982947151876").send(embed);
+    client.channels.get(client.config.channels.contactEmbedChannel).send(embed);
     res.redirect("/");
   });
 
@@ -415,7 +380,7 @@ module.exports = (client) => {
      };
      let tags = [];
      let usernames = [];
-     let pfps = []; //lmao
+     let pfps = [];
      let results = await Profiles.find().sort({karma:  -1});
 
      const lengthOfRes = results.length;
@@ -462,45 +427,6 @@ module.exports = (client) => {
     results = paginate(results, 16, currentPage);
     renderTemplate(res, req, "tags.ejs", { tag: req.params.name, featuredBots: results, numberOfPages: totalPages });
   });
-
-  app.get("/sitemap.xml", (req, res) => {res.header('Content-Type', "text/xml");
-    renderTemplate(res, req, "sitemap.ejs");
-  });
-
-  app.get("/botsmap.xml", async (req, res) => {
-    const theBots = await Bots.find();
-
-    res.header('Content-Type', "text/xml");
-    renderTemplate(res, req, "botmap.ejs", { theBots });
-  });
-
-  app.get("/profilesmap.xml", async (req, res) => {
-      const theProfiles = await Profiles.find();
-
-      res.header('Content-Type', "text/xml");
-      renderTemplate(res, req, "profilemap.ejs", { theProfiles });
-  });
-  // app.get("/list/certified", async (req, res) => {
-  //   var currentPage = req.query.page || "1";
-  //   if (isNaN(parseInt(currentPage))) {
-  //     currentPage = 1
-  //   } else {
-  //     currentPage = parseInt(currentPage);
-  //   };
-  //
-  //   let results = await Bots.find({ certified: true, approved: true }).sort([["upvotes", "descending"]]);
-  //
-  //   const lengthOfRes = results.length;
-  //   var totalPages;
-  //   if (Math.round(lengthOfRes / 16) === lengthOfRes / 16) {
-  //     totalPages = lengthOfRes / 16;
-  //   } else {
-  //     totalPages = Math.round(lengthOfRes / 16);
-  //   }
-  //   results = paginate(results, 16, currentPage);
-  //
-  //   renderTemplate(res, req, "lists/certified.ejs", { featuredBots: results, numberOfPages: totalPages });
-  // });
 
   app.get("/bot/new", checkAuth, (req, res) => {
     renderTemplate(res, req, "bot/new.ejs", { sucess: null, fail: null });
@@ -573,12 +499,12 @@ module.exports = (client) => {
     console.log(bodyData.tags);
     console.log(bodyData.tags.join(", "));
 
-    client.channels.get("561622522798407740").send(`<@${req.user.id}> added <@${bodyData.clientID}>.\n**URL**: https://discordhouse.org/bot/${bodyData.clientID}`);
+    client.channels.get(client.config.channels.botAddLogsChannel).send(`<@${req.user.id}> added <@${bodyData.clientID}>.`);
     const embed = new Discord.MessageEmbed()
       .setTitle("New Bot Added")
-      .setDescription(`**Bot**: ${self.tag} (ID: ${bodyData.clientID})\n**Owner**: ${req.user.username}#${req.user.discriminator} (ID: ${req.user.id})\n**Prefix**: \`${bodyData.prefix}\`\n**Sort Desc**: ${bodyData.shortDesc}\n**Tags**: ${bodyData.tags.join(", ")}\n**Library**: ${bodyData.library}\n**Website**: ${bodyData.website.length < 1 ? "No Website" : bodyData.website}\n**GitHub**: ${bodyData.github.length < 1 ? "No GitHub" : bodyData.github}\n**Support Server**: ${bodyData.supportServer}\n**Other Owners**: ${bodyData.otherOwners.split(", ")[0] !== "" ? bodyData.otherOwners.split(", ").join(", ") : "No Other Owners"}\n**Invite**: ${bodyData.inviteURL.indexOf("https://discordapp.com/api/oauth2/authorize") !== 0 ? `https://discordapp.com/api/oauth2/authorize?client_id=${bodyData.clientID}&permissions=0&scope=bot` : `${bodyData.inviteURL}`}\n**URL**: https://discordhouse.org/bot/${bodyData.clientID}`)
+      .setDescription(`**Bot**: ${self.tag} (ID: ${bodyData.clientID})\n**Owner**: ${req.user.username}#${req.user.discriminator} (ID: ${req.user.id})\n**Prefix**: \`${bodyData.prefix}\`\n**Sort Desc**: ${bodyData.shortDesc}\n**Tags**: ${bodyData.tags.join(", ")}\n**Library**: ${bodyData.library}\n**Website**: ${bodyData.website.length < 1 ? "No Website" : bodyData.website}\n**GitHub**: ${bodyData.github.length < 1 ? "No GitHub" : bodyData.github}\n**Support Server**: ${bodyData.supportServer}\n**Other Owners**: ${bodyData.otherOwners.split(", ")[0] !== "" ? bodyData.otherOwners.split(", ").join(", ") : "No Other Owners"}\n**Invite**: ${bodyData.inviteURL.indexOf("https://discordapp.com/api/oauth2/authorize") !== 0 ? `https://discordapp.com/api/oauth2/authorize?client_id=${bodyData.clientID}&permissions=0&scope=bot` : `${bodyData.inviteURL}`}`)
       .setColor("BLUE");
-    client.channels.get("561622527919783938").send(embed);
+    client.channels.get(client.config.channels.botAddAuditChannel).send(embed);
     renderTemplate(res, req, "bot/new.ejs", { sucess: "The bot has been successfully added in to queue.", fail: null });
   });
 
@@ -601,7 +527,7 @@ module.exports = (client) => {
     if (Botsdata.approved === false) return res.redirect("/");
     if (!Botsdata) return res.redirect("/");
 
-    if (!req.body.reason) return renderTemplate(res, req, "bot/page.ejs", { thebot: Botsdata, alertSuccess: null, alertFail: "Hmm, looks like something went wrong, please make sure you are logged in then try again." });
+    if (!req.body.reason) return renderTemplate(res, req, "bot/page.ejs", { thebot: Botsdata, alertSuccess: null, alertFail: "Hmm, looks like something went wrong, please make sure you are logged in then try again.", md });
     const bot = await client.users.fetch(Botsdata.id);
     const botOwner = await client.users.fetch(Botsdata.mainOwner);
 
@@ -610,7 +536,7 @@ module.exports = (client) => {
       .setDescription(`**User**: ${req.user.username}#${req.user.discriminator} (ID: ${req.user.id})\n**Bot**: ${bot.tag} (ID: ${bot.id})\n**Bot Owner**: ${botOwner.tag} (ID: ${botOwner.id})\n**Reason**: ${req.body.reason}`)
       .setColor("BLUE")
       .setTimestamp();
-    client.channels.get("570738216660107324").send(embed);
+    client.channels.get(client.config.botReportsAuditChannel).send(embed);
     renderTemplate(res, req, "bot/page.ejs", { thebot: Botsdata, alertSuccess: "Your report has been submited to our moderation team, we will review it as soon as possible.", alertFail: null, md });
   });
 
@@ -619,7 +545,7 @@ module.exports = (client) => {
     if (!Bot) Bot = await Bots.findOne({ id: req.params.id });
     if (!Bot) return res.redirect("/");
     if (req.user.id !== Bot.mainOwner && req.session.permLevel < 1) return res.redirect("/");
-    renderTemplate(res, req, "bot/delete.ejs", { theBot: Bot });
+    renderTemplate(res, req, "bot/delete.ejs", { theBot: Bot, md });
   });
 
   app.post("/bot/:id/delete", checkAuth, async (req, res) => {
@@ -632,17 +558,16 @@ module.exports = (client) => {
     if (name.toLowerCase() !== Bot.name.toLowerCase()) return res.redirect("/");
     if (conset !== "on") return res.redirect("/");
     var allOwners = Bot.owners;
-  allOwners.unshift(Bot.mainOwner);
-  allOwners = allOwners.map(u => `<@${u}>`);
+    allOwners.unshift(Bot.mainOwner);
+    allOwners = allOwners.map(u => `<@${u}>`);
 
   for (const owner of allOwners) {
-    const theOwner = client.guilds.get("560865387206672384").members.get(owner);
+    const theOwner = client.guilds.get(client.config.baseGuildId).members.get(owner);
     if (theOwner) {
       var allBots = await bots.find();
       allBots.filter(b => b.mainOwner === owner || b.owners.includes(owner));
       if (allBots.length > 1) return;
-      if (theOwner.roles.has("561714394388496394")) theOwner.roles.remove(client.guilds.get("560865387206672384").roles.get("561714394388496394"));
-      if (theOwner.roles.has("561715209962651668")) theOwner.roles.remove(client.guilds.get("560865387206672384").roles.get("561715209962651668"));
+      if (theOwner.roles.has(client.config.developerRole)) theOwner.roles.remove(client.guilds.get(client.config.baseGuildId).roles.get(client.config.developerRole));
     }
   }
     if (Bot.vanityUrl === req.params.id) {
@@ -650,8 +575,8 @@ module.exports = (client) => {
     } else {
       await Bots.findOneAndDelete({ id: req.params.id }).catch(e => console.log(e));
     }
-    client.channels.get("561622522798407740").send(`<@${req.user.id}> Deleted \`${Bot.name}\` ID \`${Bot.id}\` <@${Bot.id}>.`);
-    client.guilds.get("560865387206672384").members.get(Bot.id).kick(`Bot deleted from the list`)
+    client.channels.get(client.config.channels.botDeleteLogsChannel).send(`<@${req.user.id}> Deleted \`${Bot.name}\` ID \`${Bot.id}\` <@${Bot.id}>.`);
+    client.guilds.get(client.config.baseGuildId).members.get(Bot.id).kick(`Bot deleted from the list.`)
     return res.redirect("/");
   });
 
@@ -661,7 +586,7 @@ module.exports = (client) => {
     if (!Bot) return res.redirect("/");
 
     if (req.user.id === Bot.mainOwner || Bot.owners.includes(req.user.id) || req.session.permLevel > 0) {
-      renderTemplate(res, req, "bot/edit.ejs", { theBot: Bot, sucess: null, fail: null });
+      renderTemplate(res, req, "bot/edit.ejs", { theBot: Bot, sucess: null, fail: null, md });
     } else {
       res.redirect(`/bot/${Bot.id}`);
     }
@@ -690,55 +615,55 @@ module.exports = (client) => {
     }
 
     const validBot = await validateBotForID(bodyData.clientID);
-    if (validBot === false) return renderTemplate(res, req, "bot/edit.ejs", { theBot: Bot, sucess: null, fail: "Invalid ClientID/provided ClientID was not a bot." });
-    if (bodyData.shortDesc.length < 30) return renderTemplate(res, req, "bot/edit.ejs", { theBot: Bot, sucess: null, fail: "Short description must be at least 30 characters long." });
-    if (bodyData.shortDesc.length > 84) return renderTemplate(res, req, "bot/edit.ejs", { theBot: Bot, sucess: null, fail: "Short description can have 80 characters at maximum." });
-    if (bodyData.longDesc.length < 250) return renderTemplate(res, req, "bot/edit.ejs", { theBot: Bot, sucess: null, fail: "Long description must be at least 250 characters long." });
-    if (bodyData.tags.lengh > 3) return renderTemplate(res, req, "bot/edit.ejs", { sucess: null, fail: "You can add at maximum 3 tags to your bot." });
+    if (validBot === false) return renderTemplate(res, req, "bot/edit.ejs", { theBot: Bot, sucess: null, fail: "Invalid ClientID/provided ClientID was not a bot.", md });
+    if (bodyData.shortDesc.length < 30) return renderTemplate(res, req, "bot/edit.ejs", { theBot: Bot, sucess: null, fail: "Short description must be at least 30 characters long.", md });
+    if (bodyData.shortDesc.length > 84) return renderTemplate(res, req, "bot/edit.ejs", { theBot: Bot, sucess: null, fail: "Short description can have 80 characters at maximum.", md });
+    if (bodyData.longDesc.length < 250) return renderTemplate(res, req, "bot/edit.ejs", { theBot: Bot, sucess: null, fail: "Long description must be at least 250 characters long.", md });
+    if (bodyData.tags.lengh > 3) return renderTemplate(res, req, "bot/edit.ejs", { sucess: null, fail: "You can add at maximum 3 tags to your bot.", md });
     const invDetails = await fetchInviteURL(bodyData.supportServer);
-    if (invDetails.valid === false) return renderTemplate(res, req, "bot/edit.ejs", { theBot: Bot, sucess: null, fail: "Invalid invite code provided." });
+    if (invDetails.valid === false) return renderTemplate(res, req, "bot/edit.ejs", { theBot: Bot, sucess: null, fail: "Invalid invite code provided.", md });
 
     let self = await client.users.fetch(bodyData.clientID);
 
-    if (Bot.vanityUrl === req.params.id) {
-      Bots.findOne({ vanityUrl: req.params.id }, async (err, entry) => {
-        entry.name = self.username;
-        entry.owners = bodyData.otherOwners.split(", ")[0] !== "" ? bodyData.otherOwners.split(", ") : [];
-        entry.mainOwner = bodyData.mainOwner;
-        entry.library = bodyData.library;
-        entry.website = bodyData.website || "none";
-        entry.github = bodyData.github || "none";
-        entry.shortDesc = bodyData.shortDesc;
-        entry.longDesc = bodyData.longDesc;
-        entry.server = bodyData.supportServer;
-        entry.prefix = bodyData.prefix;
-        entry.invite =  bodyData.inviteURL.indexOf("https://discordapp.com/api/oauth2/authorize") !== 0 ? `https://discordapp.com/api/oauth2/authorize?client_id=${bodyData.clientID}&permissions=0&scope=bot` : bodyData.inviteURL;
-        entry.tags = bodyData.tags;
+      if (Bot.vanityUrl === req.params.id) {
+        Bots.findOne({ vanityUrl: req.params.id }, async (err, entry) => {
+          entry.name = self.username;
+          entry.owners = bodyData.otherOwners.split(", ")[0] !== "" ? bodyData.otherOwners.split(", ") : [];
+          entry.mainOwner = bodyData.mainOwner;
+          entry.library = bodyData.library;
+          entry.website = bodyData.website || "none";
+          entry.github = bodyData.github || "none";
+          entry.shortDesc = bodyData.shortDesc;
+          entry.longDesc = bodyData.longDesc;
+          entry.server = bodyData.supportServer;
+          entry.prefix = bodyData.prefix;
+          entry.invite =  bodyData.inviteURL.indexOf("https://discordapp.com/api/oauth2/authorize") !== 0 ? `https://discordapp.com/api/oauth2/authorize?client_id=${bodyData.clientID}&permissions=0&scope=bot` : bodyData.inviteURL;
+          entry.tags = bodyData.tags;
 
-        await entry.save().catch(e => console.log(e));
-      });
+          await entry.save().catch(e => console.log(e));
+        });
+      } else {
+        Bots.findOne({ id: req.params.id }, async (err, entry) => {
+          entry.name = self.username;
+          entry.owners = bodyData.otherOwners.split(", ")[0] !== "" ? bodyData.otherOwners.split(", ") : [];
+          entry.mainOwner = bodyData.mainOwner;
+          entry.library = bodyData.library;
+          entry.website = bodyData.website || "none";
+          entry.github = bodyData.github || "none";
+          entry.shortDesc = bodyData.shortDesc;
+          entry.longDesc = bodyData.longDesc;
+          entry.server = bodyData.supportServer;
+          entry.prefix = bodyData.prefix;
+          entry.invite =  bodyData.inviteURL.indexOf("https://discordapp.com/api/oauth2/authorize") !== 0 ? `https://discordapp.com/api/oauth2/authorize?client_id=${bodyData.clientID}&permissions=0&scope=bot` : bodyData.inviteURL;
+          entry.tags = bodyData.tags;
+
+          await entry.save().catch(e => console.log(e));
+        });
+
+        client.channels.get(client.config.botEditLogsChannel).send(`<@${req.user.id}> edited <@${Bot.id}>.`);
+        res.redirect("/bot/" + Bot.id);
+      }
     } else {
-      Bots.findOne({ id: req.params.id }, async (err, entry) => {
-        entry.name = self.username;
-        entry.owners = bodyData.otherOwners.split(", ")[0] !== "" ? bodyData.otherOwners.split(", ") : [];
-        entry.mainOwner = bodyData.mainOwner;
-        entry.library = bodyData.library;
-        entry.website = bodyData.website || "none";
-        entry.github = bodyData.github || "none";
-        entry.shortDesc = bodyData.shortDesc;
-        entry.longDesc = bodyData.longDesc;
-        entry.server = bodyData.supportServer;
-        entry.prefix = bodyData.prefix;
-        entry.invite =  bodyData.inviteURL.indexOf("https://discordapp.com/api/oauth2/authorize") !== 0 ? `https://discordapp.com/api/oauth2/authorize?client_id=${bodyData.clientID}&permissions=0&scope=bot` : bodyData.inviteURL;
-        entry.tags = bodyData.tags;
-
-        await entry.save().catch(e => console.log(e));
-      });
-
-      client.channels.get("561622522798407740").send(`<@${req.user.id}> edited <@${Bot.id}>.\nURL: https://discordhouse.org/bot/${Bot.id}`);
-      res.redirect("/bot/" + Bot.id);
-    }
-  } else {
       res.redirect("/");
     }
   });
@@ -753,7 +678,7 @@ module.exports = (client) => {
       var user = await Profiles.findOne({ id: Bot.mainOwner });
       const uVoteIndex = Bot.votes.findIndex(u => u.id === req.user.id);
       if (uVoteIndex > -1) {
-        if (Date.now() - Bot.votes[uVoteIndex].timestamp < 43200000) return renderTemplate(res, req, "bot/page.ejs", { thebot: Bot, alertSuccess: null, alertFail: `You have aleady voted for this bot. Try again in ${msToHMS(43200000 - (Date.now() - Bot.votes[uVoteIndex].timestamp))}.` });
+        if (Date.now() - Bot.votes[uVoteIndex].timestamp < 43200000) return renderTemplate(res, req, "bot/page.ejs", { thebot: Bot, alertSuccess: null, alertFail: `You have aleady voted for this bot. Try again in ${msToHMS(43200000 - (Date.now() - Bot.votes[uVoteIndex].timestamp))}.`, md });
         Bot.votes.splice(uVoteIndex, 1);
       }
 
@@ -769,7 +694,7 @@ module.exports = (client) => {
       Bot.votes.push(voteObj);
       await Bot.save().catch(e => console.log(e));
       await user.save().catch(e => console.log(e));
-      renderTemplate(res, req, "bot/page.ejs", { thebot: Bot, alertSuccess: "Your vote has been counted.", alertFail: null }, md);
+      renderTemplate(res, req, "bot/page.ejs", { thebot: Bot, alertSuccess: "Your vote has been counted.", alertFail: null, md });
     });
   });
 
@@ -778,7 +703,7 @@ module.exports = (client) => {
     if (!But) But = await Bots.findOne({ id: req.params.id });
     if (!But) return res.redirect("/");
     req.query.stars = parseInt(req.query.stars);
-    if (req.query.stars !== 1 && req.query.stars !== 2 && req.query.stars !== 3 && req.query.stars !== 4 && req.query.stars !== 5 ) return  res.redirect("/bot/"+req.params.id);
+    if (req.query.stars !== 1 && req.query.stars !== 2 && req.query.stars !== 3 && req.query.stars !== 4 && req.query.stars !== 5 ) return res.redirect("/bot/" + req.params.id);
 
     Bots.findOne({ id: But.id }, async (err,  Bot) => {
       if (err) console.log(err);
@@ -793,17 +718,9 @@ module.exports = (client) => {
       };
       Bot.rates.push(rateObj);
       await Bot.save().catch(e => console.log(e));
-      renderTemplate(res, req, "bot/page.ejs", { thebot: Bot, alertSuccess: "Your rating has been counted.", alertFail: null }, md);
+      renderTemplate(res, req, "bot/page.ejs", { thebot: Bot, alertSuccess: "Your rating has been counted.", alertFail: null, md });
     });
   });
-  // app.get("/api/search", async (req, res) => {
-  //   res.setHeader("Content-Type", "application/json");
-  //   if (!req.query.name) return res.send(JSON.stringify({ "msg": "Bad request.", "code": 400 }, null, 4));
-  //   const query = new RegExp(req.query.name, "i")
-  //   let results = await Bots.find({ name: query });
-  //   if (results.length < 1) return res.send(JSON.stringify({ "msg": "Not found.", "code": 404 }, null, 4));
-  //   res.send(JSON.stringify({ "msg": "Sucessful request.", "code": 200, "results": results, "bot": client }, null, 4));
-  // });
 
   app.get("/privacy", (req, res) => {
     renderTemplate(res, req, "formalities/privacy.ejs");
@@ -817,22 +734,8 @@ module.exports = (client) => {
     renderTemplate(res, req, "formalities/license.ejs");
   });
 
-  // app.get("/api/docs", (req, res) => {
-  //   renderTemplate(res, req, "api/docs.ejs");
-  // });
-
-  // app.get("/certification", (req, res) => {
-  //   renderTemplate(res, req, "certification/info.ejs");
-  // });
-  //
-  // app.get("/certification/apply", checkAuth, async (req, res) => {
-  //   const userBots = await Bots.find({ mainOwner: req.user.id, approved: true });
-  //   console.log(userBots);
-  //   renderTemplate(res, req, "certification/apply.ejs", { userBots });
-  // });
-
   app.get("*", (req, res) => renderTemplate(res, req, "404.ejs"));
   app.post("*", (req, res) => renderTemplate(res, req, "404.ejs"));
 
-  client.site = app.listen(client.config.dashboard.port, null, null, () => console.log("Dashboard is up and running."));
+  client.site = app.listen(client.config.dashboard.port, null, null, () => console.log("List is up and running."));
 };

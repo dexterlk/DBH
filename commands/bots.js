@@ -9,7 +9,7 @@ module.exports.run = async (client, message, args, reply) => {
     .setColor("BLUE");
 
   if (userBots.length < 1) {
-    embed.setDescription(`<:redTick:568885082321059865> The specified user does not have any published bots.`);
+    embed.setDescription(`The specified user does not have any published bots.`);
   } else {
     var bots = [];
     for (const bot of userBots) {
