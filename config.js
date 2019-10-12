@@ -1,7 +1,7 @@
 module.exports = {
-  "token": "NjI0NjE3ODA0NjExNDUyOTI5.XaIILQ.13vnC_7LZbj1IBUwchcTqyXf6b4",
+  "token": "TOKEN",
   "dashboard": {
-    "oauthSecret": "9KHHJnn6sW1VPeiza6fI8M73YNTKyFQ0",
+    "oauthSecret": "CLIENT_DECRET",
     "callbackURL": "http://localhost/callback", // add this to OAuth page of your application
     "sessionSecret": "dfd$##$%$#%$CFdfdf4%$%#@#$@@##@$#@EncryptionIsForce%^%53345#$%$#%22334+324238+294423+4e2*/1e+dsafqerq352/4+",
     "domain": "localhost",
@@ -23,6 +23,6 @@ module.exports = {
   "baseGuildId": "GUILD_ID",
   "developerRole": "ROLE_ID",
   "discordInvite": "https://discord.gg/<CODE>",
-  "dbUrl": "mongodb://stuff:stuff1@ds233288.mlab.com:33288/stuff",
+  "dbUrl": "mongodb://...",
   "admins": []
 };
